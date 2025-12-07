@@ -1,0 +1,156 @@
+/* src/App.css */
+
+.App {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e5e7eb;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.app-header p {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.topic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.topic-input {
+  border-radius: 0.75rem;
+  border: 1px solid #4b5563;
+  padding: 0.75rem 0.9rem;
+  background: #020617;
+  color: #e5e7eb;
+  resize: vertical;
+  min-height: 70px;
+}
+
+.topic-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa33;
+}
+
+.submit-button {
+  align-self: flex-end;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.05s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+}
+
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.submit-button:not(:disabled):hover {
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.error-box {
+  background: #7f1d1d;
+  border: 1px solid #fecaca;
+  color: #fee2e2;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.hint {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.graph-container {
+  margin-top: 2rem;
+  border-radius: 1.25rem;
+  border: 1px solid #374151;
+  padding: 1.5rem 1.25rem 1.75rem;
+  background: radial-gradient(circle at top, #0b1120, #020617);
+}
+
+.topic-node {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.topic-node h2 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.topic-node p {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.edges-label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 0.6rem;
+}
+
+.related-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.9rem;
+}
+
+.graph-node {
+  border-radius: 1rem;
+  border: 1px solid #374151;
+  background: #020617;
+  padding: 0.9rem 0.9rem 0.8rem;
+}
+
+.graph-node h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.node-description {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 0.45rem;
+}
+
+.node-connections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.connection-chip {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #4b5563;
+  padding: 0.15rem 0.5rem;
+  opacity: 0.9;
+}
