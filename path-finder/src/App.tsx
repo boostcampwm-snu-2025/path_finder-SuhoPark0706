@@ -1,5 +1,5 @@
-// src/App.tsx
-import { useState, FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, FormEvent } from 'react'
+import ForceGraph2D from 'react-force-graph-2d'
 import './App.css'
 
 type GraphNode = {
@@ -19,24 +19,54 @@ type GraphData = {
   edges: GraphEdge[]
 }
 
-const MODEL_NAME = 'gemini-2.5-flash' // 필요하면 다른 모델로 변경 가능
+const MODEL_NAME = 'gemini-2.5-flash'
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string
 
-function getConnections(graph: GraphData, nodeId: string): string[] {
-  return graph.edges
-    .filter((e) => e.from === nodeId || e.to === nodeId)
-    .map((e) => {
-      const other = e.from === nodeId ? e.to : e.from
-      const arrow = e.from === nodeId ? '→' : '←'
-      return `${arrow} ${other}${e.relation ? ` (${e.relation})` : ''}`
-    })
-}
+type FGNode = { id: string; name: string; description?: string }
+type FGLink = { source: string; target: string; relation?: string }
+type FGData = { nodes: FGNode[]; links: FGLink[] }
 
-function App() {
+export default function App() {
   const [topic, setTopic] = useState('')
   const [graph, setGraph] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [selected, setSelected] = useState<FGNode | null>(null)
+
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const fgRef = useRef<any>(null)
+  const [size, setSize] = useState({ w: 900, h: 560 })
+
+  // Resize graph canvas to container
+  useEffect(() => {
+    if (!wrapRef.current) return
+    const ro = new ResizeObserver(() => {
+      const rect = wrapRef.current!.getBoundingClientRect()
+      setSize({
+        w: Math.max(320, Math.floor(rect.width)),
+        h: Math.max(360, Math.floor(rect.height)),
+      })
+    })
+    ro.observe(wrapRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  const fgData: FGData | null = useMemo(() => {
+    if (!graph) return null
+    return {
+      nodes: graph.nodes.map((n) => ({
+        id: n.id,
+        name: n.label,
+        description: n.description,
+      })),
+      links: graph.edges.map((e) => ({
+        source: e.from,
+        target: e.to,
+        relation: e.relation,
+      })),
+    }
+  }, [graph])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -50,6 +80,7 @@ function App() {
     setLoading(true)
     setError(null)
     setGraph(null)
+    setSelected(null)
 
     const prompt = `
 You are an academic research assistant.
@@ -80,35 +111,19 @@ Research topic: "${topic}"
         `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: prompt }],
-              },
-            ],
-            // JSON 형식으로만 응답 달라고 요청
-            generationConfig: {
-              response_mime_type: 'application/json',
-            },
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { response_mime_type: 'application/json' },
           }),
         },
       )
 
-      if (!res.ok) {
-        throw new Error(`Gemini API error: ${res.status} ${res.statusText}`)
-      }
+      if (!res.ok) throw new Error(`Gemini API error: ${res.status} ${res.statusText}`)
 
       const data = await res.json()
-      const text: string | undefined =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text
-
-      if (!text) {
-        throw new Error('Empty response from model')
-      }
+      const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) throw new Error('Empty response from model')
 
       const parsed: GraphData = JSON.parse(text)
       setGraph(parsed)
@@ -120,12 +135,14 @@ Research topic: "${topic}"
     }
   }
 
-  const topicNode =
-    graph?.nodes.find((n) => n.id === 'topic') ?? graph?.nodes[0] ?? null
-  const relatedNodes =
-    graph && topicNode
-      ? graph.nodes.filter((n) => n.id !== topicNode.id)
-      : []
+  // Auto fit when graph changes
+  useEffect(() => {
+    if (!fgRef.current || !fgData) return
+    const t = setTimeout(() => {
+      fgRef.current?.zoomToFit?.(500, 60)
+    }, 50)
+    return () => clearTimeout(t)
+  }, [fgData])
 
   return (
     <div className="App">
@@ -149,42 +166,97 @@ Research topic: "${topic}"
 
       {error && <div className="error-box">⚠️ {error}</div>}
 
-      {!graph && !loading && !error && (
-        <div className="hint">
-          Enter any research topic (e.g., your thesis idea) to see a simple related-work graph.
-        </div>
+      {!fgData && !loading && !error && (
+        <div className="hint">Enter any research topic to see a related-work graph.</div>
       )}
 
-      {graph && topicNode && (
-        <div className="graph-container">
-          <div className="topic-node">
-            <h2>{topicNode.label}</h2>
-            {topicNode.description && <p>{topicNode.description}</p>}
+      {fgData && (
+        <div className="graph-wrap">
+          <div className="graph-canvas" ref={wrapRef}>
+            <ForceGraph2D
+              ref={fgRef}
+              width={size.w}
+              height={size.h}
+              graphData={fgData}
+              nodeId="id"
+              nodeLabel={(n: any) => `${n.name}${n.description ? `\n\n${n.description}` : ''}`}
+              linkLabel={(l: any) => l.relation ?? ''}
+              linkDirectionalArrowLength={6}
+              linkDirectionalArrowRelPos={1}
+              onNodeClick={(n: any) => setSelected(n)}
+              onBackgroundClick={() => setSelected(null)}
+              nodeCanvasObject={(node: any, ctx, globalScale) => {
+                const isTopic = node.id === 'topic'
+                const isSelected = selected?.id === node.id
+
+                const label = node.name as string
+                const fontSize = (isTopic ? 16 : 13) / globalScale
+                const r = (isTopic ? 10 : 7) + (isSelected ? 3 : 0)
+
+                // circle
+                ctx.beginPath()
+                ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
+                ctx.fillStyle = isTopic ? '#111827' : isSelected ? '#1f2937' : '#374151'
+                ctx.fill()
+
+                // label background
+                ctx.font = `${fontSize}px sans-serif`
+                const textWidth = ctx.measureText(label).width
+                const pad = 3 / globalScale
+                const bgW = textWidth + pad * 2
+                const bgH = fontSize + pad * 2
+
+                ctx.fillStyle = 'rgba(255,255,255,0.9)'
+                ctx.fillRect(node.x - bgW / 2, node.y + r + 4 / globalScale, bgW, bgH)
+
+                // label text
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'top'
+                ctx.fillStyle = '#111827'
+                ctx.fillText(label, node.x, node.y + r + 4 / globalScale + pad)
+              }}
+              linkCanvasObjectMode={() => 'after'}
+              linkCanvasObject={(link: any, ctx, globalScale) => {
+                const rel = link.relation as string | undefined
+                if (!rel) return
+
+                const sx = (link.source as any).x
+                const sy = (link.source as any).y
+                const tx = (link.target as any).x
+                const ty = (link.target as any).y
+                const mx = (sx + tx) / 2
+                const my = (sy + ty) / 2
+
+                const fontSize = 11 / globalScale
+                ctx.font = `${fontSize}px sans-serif`
+                const w = ctx.measureText(rel).width
+                const pad = 3 / globalScale
+
+                ctx.fillStyle = 'rgba(255,255,255,0.85)'
+                ctx.fillRect(mx - (w / 2 + pad), my - (fontSize / 2 + pad), w + pad * 2, fontSize + pad * 2)
+
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'middle'
+                ctx.fillStyle = '#111827'
+                ctx.fillText(rel, mx, my)
+              }}
+            />
           </div>
 
-          <div className="edges-label">Related nodes</div>
-
-          <div className="related-nodes">
-            {relatedNodes.map((node) => (
-              <div key={node.id} className="graph-node">
-                <h3>{node.label}</h3>
-                {node.description && (
-                  <p className="node-description">{node.description}</p>
-                )}
-                <div className="node-connections">
-                  {getConnections(graph, node.id).map((c, idx) => (
-                    <span key={idx} className="connection-chip">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <aside className="graph-panel">
+            <div className="panel-title">Details</div>
+            {selected ? (
+              <>
+                <div className="panel-node-title">{selected.name}</div>
+                {selected.description && <div className="panel-node-desc">{selected.description}</div>}
+                <div className="panel-hint">Tip: click empty space to clear selection.</div>
+              </>
+            ) : (
+              <div className="panel-hint">Click a node to see its description.</div>
+            )}
+          </aside>
         </div>
       )}
     </div>
   )
 }
-
-export default App
