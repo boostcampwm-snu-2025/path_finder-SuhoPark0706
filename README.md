@@ -1,6 +1,6 @@
 # path_finder-SuhoPark0706
 
-입력창에 **연구하고 싶은 주제**를 입력하면, 관련 연구 분야를 조사해 **그래프(노드/엣지)**로 시각화해주는 웹 프로그램입니다.
+입력창에 **연구하고 싶은 주제**를 입력하면, 관련 연구 분야를 조사해 그래프로 시각화해주는 웹 프로그램입니다.
 
 ## 데모
 - 동영상: https://drive.google.com/file/d/10YNPJMt1frFED2WQbeyt9QTwNfCHRYw2/view?usp=sharing
